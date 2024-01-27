@@ -64,7 +64,10 @@
     <Compile Include="Assets\Player1Logic.cs" />
     <Compile Include="Assets\Bandits - Pixel Art\Demo\Bandit.cs" />
     <Compile Include="Assets\Bandits - Pixel Art\Demo\Sensor_Bandit.cs" />
+    <Compile Include="Assets\Player2Logic.cs" />
     <Compile Include="Assets\CharacterController2D.cs" />
+    <Compile Include="Assets\CharacterController2D_2.cs" />
+    <Compile Include="Assets\Bandits - Pixel Art\Demo\Bandit2.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="UnityEngine">

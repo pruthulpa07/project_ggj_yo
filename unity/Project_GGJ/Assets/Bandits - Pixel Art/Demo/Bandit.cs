@@ -13,11 +13,25 @@ public class Bandit : MonoBehaviour {
     private bool                m_combatIdle = false;
     private bool                m_isDead = false;
 
+    private ParticleSystem smokeParticleSystem; // Reference to your Particle System component
+    public AudioClip mySoundClip; // Assign your sound clip in the Inspector
+    private AudioSource audioSource;
+
     // Use this for initialization
     void Start () {
         m_animator = GetComponent<Animator>();
         m_body2d = GetComponent<Rigidbody2D>();
         m_groundSensor = transform.Find("GroundSensor").GetComponent<Sensor_Bandit>();
+        // Get the Particle System component (assuming it's attached to the same GameObject)
+        smokeParticleSystem = GetComponentInChildren<ParticleSystem>();
+        // Disable emission initially
+        var emissionModule = smokeParticleSystem.emission;
+        emissionModule.enabled = false;
+        // Get the AudioSource component (assuming it's attached to the same GameObject)
+        audioSource = GetComponent<AudioSource>();
+
+        // Assign the AudioClip to the AudioSource
+        audioSource.clip = mySoundClip;
     }
 	
 	// Update is called once per frame
@@ -26,6 +40,7 @@ public class Bandit : MonoBehaviour {
         if (!m_grounded && m_groundSensor.State()) {
             m_grounded = true;
             m_animator.SetBool("Grounded", m_grounded);
+            StopSmokeParticleSystem();
         }
 
         //Check if character just started falling
@@ -65,7 +80,7 @@ public class Bandit : MonoBehaviour {
             m_animator.SetTrigger("Hurt");
 
         //Attack
-        else if(Input.GetMouseButtonDown(0)) {
+        else if(Input.GetButtonDown("Hit")) {
             m_animator.SetTrigger("Attack");
         }
 
@@ -74,12 +89,14 @@ public class Bandit : MonoBehaviour {
             m_combatIdle = !m_combatIdle;
 
         //Jump
-        else if (Input.GetKeyDown("space") && m_grounded) {
-            m_animator.SetTrigger("Jump");
-            m_grounded = false;
-            m_animator.SetBool("Grounded", m_grounded);
-            m_body2d.velocity = new Vector2(m_body2d.velocity.x, m_jumpForce);
-            m_groundSensor.Disable(0.2f);
+        else if (Input.GetButtonDown("Jump") && m_grounded) {
+            
+            StartCoroutine(StartSmokeParticleSystem());
+            //m_animator.SetTrigger("Jump");
+            //m_grounded = false;
+            //m_animator.SetBool("Grounded", m_grounded);
+            //m_body2d.velocity = new Vector2(m_body2d.velocity.x, m_jumpForce);
+            //m_groundSensor.Disable(0.2f);
         }
 
         //Run
@@ -93,5 +110,27 @@ public class Bandit : MonoBehaviour {
         //Idle
         else
             m_animator.SetInteger("AnimState", 0);
+    }
+
+    public void StopSmokeParticleSystem()
+    {
+        smokeParticleSystem.Simulate(0f, false, true);
+        smokeParticleSystem.Stop();
+        audioSource.Stop();
+    }
+
+    public IEnumerator StartSmokeParticleSystem()
+    {
+        // Enable emission
+        var emissionModule = smokeParticleSystem.emission;
+        emissionModule.enabled = true;
+        smokeParticleSystem.Play();
+        audioSource.Play();
+        yield return new WaitForSecondsRealtime(2); // Wait for 4 seconds
+        m_animator.SetTrigger("Jump");
+        m_grounded = false;
+        m_animator.SetBool("Grounded", m_grounded);
+        m_body2d.velocity = new Vector2(m_body2d.velocity.x, m_jumpForce);
+        m_groundSensor.Disable(0.2f);
     }
 }
