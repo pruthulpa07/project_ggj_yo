@@ -3,3 +3,5 @@ unity/Project_GGJ/Packages/*
 unity/Project_GGJ/obj/*
 unity/Project_GGJ/Logs/*
 unity/Project_GGJ/ProjectSettings/*
+unity/Project_GGJ/UserSettings/*
+unity/Project_GGJ/Temp/*
