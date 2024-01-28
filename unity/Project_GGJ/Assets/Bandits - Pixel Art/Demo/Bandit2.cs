@@ -1,10 +1,11 @@
 ﻿using UnityEngine;
+using UnityEngine.UI;
 using System.Collections;
 
 public class Bandit2 : MonoBehaviour {
 
     [SerializeField] float      m_speed = 4.0f;
-    [SerializeField] float      m_jumpForce = 7.5f;
+    [SerializeField] float      m_jumpForce = 4.5f;
 
     private Animator            m_animator;
     private Rigidbody2D         m_body2d;
@@ -15,18 +16,29 @@ public class Bandit2 : MonoBehaviour {
 
     private ParticleSystem smokeParticleSystem; // Reference to your Particle System component
 
-    public int health;
+    public float health;
+    private float maxHealth;
     public GameObject bloodEffect;
 
     private float timeBtwAttack;
     public float startTimeBtwAttack;
     public Transform attackPos;
+    public Transform attackPosBottom;
     public LayerMask whatIsEnemies;
 
     public float attackRange;
     public int damage;
 
     public GameOverManager gameOverManager;
+    public Image healthBar;
+    public Image nitroBar;
+
+    public float nitroDuration = 5f; // Duration of nitro boost
+    public float nitroSpeedBoost = 2f; // Multiplier for speed boost
+    public float nitroRechargeRate = 0.5f; // Rate at which nitro refills
+
+    private float currentNitroLevel2;
+    private bool isNitroActive;
     // Use this for initialization
     void Start () {
         m_animator = GetComponent<Animator>();
@@ -37,10 +49,18 @@ public class Bandit2 : MonoBehaviour {
         // Disable emission initially
         var emissionModule = smokeParticleSystem.emission;
         emissionModule.enabled = false;
+        maxHealth = health;
+        currentNitroLevel2 = 1f; // Full nitro bar initially
+        isNitroActive = false;
     }
 	
 	// Update is called once per frame
 	void Update () {
+        // Detect nitro activation (e.g., Left Shift)
+        if (Input.GetButtonDown("Nitro2") && currentNitroLevel2 > 0.7)
+        {
+            ActivateNitro();
+        }
 
         if (timeBtwAttack <= 1)
         {
@@ -48,9 +68,10 @@ public class Bandit2 : MonoBehaviour {
             if (Input.GetButtonDown("Hit2"))
             {
                 m_animator.SetTrigger("Attack");
-                Collider2D[] enemiesToDamage = Physics2D.OverlapCircleAll(attackPos.position, attackRange);
+                Collider2D[] enemiesToDamage = Physics2D.OverlapCircleAll(attackPos.position, attackRange,whatIsEnemies);
                 for (int i = 0; i < enemiesToDamage.Length; i++)
                 {
+                    Debug.Log(enemiesToDamage[i].ToString());
                     enemiesToDamage[i].GetComponent<Bandit>().TakeDamage(damage);
                 }
             }
@@ -75,6 +96,19 @@ public class Bandit2 : MonoBehaviour {
             m_grounded = true;
             m_animator.SetBool("Grounded", m_grounded);
             StopSmokeParticleSystem();
+            if(isNitroActive)
+            {
+                Collider2D[] enemiesToDamage = Physics2D.OverlapCircleAll(attackPosBottom.position, attackRange, whatIsEnemies);
+                
+                for (int i = 0; i < enemiesToDamage.Length; i++)
+                {
+                    Debug.Log(enemiesToDamage[i].GetComponent<Bandit>().ToString());
+                    Debug.Log("onhead");
+                    enemiesToDamage[i].GetComponent<Bandit>().TakeDamage(2 * damage);
+                    
+                }
+            }
+            
         }
 
         //Check if character just started falling
@@ -124,12 +158,20 @@ public class Bandit2 : MonoBehaviour {
 
         //Jump
         else if (Input.GetButtonDown("Jump2") && m_grounded) {
-            StartCoroutine(StartSmokeParticleSystem());
-            //m_animator.SetTrigger("Jump");
-            //m_grounded = false;
-            //m_animator.SetBool("Grounded", m_grounded);
-            //m_body2d.velocity = new Vector2(m_body2d.velocity.x, m_jumpForce);
-            //m_groundSensor.Disable(0.2f);
+            if(isNitroActive)
+            {
+                StartCoroutine(StartSmokeParticleSystem());
+            }
+            else
+            {
+                m_animator.SetTrigger("Jump");
+                m_grounded = false;
+                m_animator.SetBool("Grounded", m_grounded);
+                m_body2d.velocity = new Vector2(m_body2d.velocity.x, m_jumpForce);
+                m_groundSensor.Disable(0.2f);
+            }
+
+            
         }
 
         //Run
@@ -143,6 +185,15 @@ public class Bandit2 : MonoBehaviour {
         //Idle
         else
             m_animator.SetInteger("AnimState", 0);
+
+        // Recharge nitro over time
+        if (!isNitroActive)
+        {
+            currentNitroLevel2 += nitroRechargeRate * Time.deltaTime/60f;
+            currentNitroLevel2 = Mathf.Clamp01(currentNitroLevel2); // Keep it between 0 and 1
+            nitroBar.fillAmount = currentNitroLevel2;
+
+        }
     }
 
     public void StopSmokeParticleSystem()
@@ -154,7 +205,6 @@ public class Bandit2 : MonoBehaviour {
     public IEnumerator StartSmokeParticleSystem()
     {
         // Enable emission
-        Debug.Log("StartSmokeParticleSystem");
         var emissionModule = smokeParticleSystem.emission;
         emissionModule.enabled = true;
         smokeParticleSystem.Play();
@@ -171,11 +221,39 @@ public class Bandit2 : MonoBehaviour {
         Instantiate(bloodEffect, transform.position, Quaternion.identity);
         health -= damage;
         m_animator.SetTrigger("Hurt");
+        healthBar.fillAmount = health / maxHealth;
     }
 
     private void OnDrawGizmosSelected()
     {
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(attackPos.position, attackRange);
+        Gizmos.DrawWireSphere(attackPosBottom.position, attackRange);
+    }
+
+    private void ActivateNitro()
+    {
+        // Apply speed boost
+        // Example: Increase motor torque for a car controller
+        // Example: Add force to a rigidbody
+        m_jumpForce = m_jumpForce * nitroSpeedBoost;
+
+        // Play visual effects and sound
+
+        // Start nitro countdown
+        isNitroActive = true;
+        currentNitroLevel2 = Mathf.Clamp01(0f); // Keep it between 0 and 1
+        nitroBar.fillAmount = currentNitroLevel2;
+        Invoke(nameof(DeactivateNitro), nitroDuration);
+    }
+
+    private void DeactivateNitro()
+    {
+        // Reset speed boost
+        // Stop visual effects and sound
+
+        m_jumpForce = 3.5f;
+        // Nitro is no longer active
+        isNitroActive = false;
     }
 }
