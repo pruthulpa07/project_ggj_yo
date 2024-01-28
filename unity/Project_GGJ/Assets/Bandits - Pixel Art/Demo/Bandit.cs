@@ -16,6 +16,19 @@ public class Bandit : MonoBehaviour {
     private ParticleSystem smokeParticleSystem; // Reference to your Particle System component
     public AudioClip mySoundClip; // Assign your sound clip in the Inspector
     private AudioSource audioSource;
+    public int health;
+    public GameObject bloodEffect;
+
+    private float timeBtwAttack;
+    public float startTimeBtwAttack;
+
+    public Transform attackPos;
+    public LayerMask whatIsEnemies;
+
+    public float attackRange;
+    public int damage;
+
+    public GameOverManager gameOverManager;
 
     // Use this for initialization
     void Start () {
@@ -36,6 +49,35 @@ public class Bandit : MonoBehaviour {
 	
 	// Update is called once per frame
 	void Update () {
+        if (timeBtwAttack <= 1) {
+            
+            // attack possible
+            if (Input.GetButtonDown("Hit"))
+            {
+                m_animator.SetTrigger("Attack");
+                Collider2D[] enemiesToDamage = Physics2D.OverlapCircleAll(attackPos.position, attackRange, whatIsEnemies);
+                for (int i = 0; i < enemiesToDamage.Length; i++)
+                {
+                    enemiesToDamage[i].GetComponent<Bandit2>().TakeDamage(damage);
+                }
+            }
+            if (timeBtwAttack <= 0)
+            {
+                timeBtwAttack = startTimeBtwAttack;
+            }
+                
+        }
+        else
+        {
+            timeBtwAttack -= Time.deltaTime;
+        }
+
+        if(health <= 0)
+        {
+            m_animator.SetTrigger("Death");
+            gameOverManager.ShowGameOverScreen();
+            //Destroy(gameObject);
+        }
         //Check if character just landed on the ground
         if (!m_grounded && m_groundSensor.State()) {
             m_grounded = true;
@@ -80,9 +122,9 @@ public class Bandit : MonoBehaviour {
             m_animator.SetTrigger("Hurt");
 
         //Attack
-        else if(Input.GetButtonDown("Hit")) {
-            m_animator.SetTrigger("Attack");
-        }
+        //else if(Input.GetButtonDown("Hit")) {
+        //    m_animator.SetTrigger("Attack");
+        //}
 
         //Change between idle and combat idle
         else if (Input.GetKeyDown("f"))
@@ -132,5 +174,18 @@ public class Bandit : MonoBehaviour {
         m_animator.SetBool("Grounded", m_grounded);
         m_body2d.velocity = new Vector2(m_body2d.velocity.x, m_jumpForce);
         m_groundSensor.Disable(0.2f);
+    }
+
+    public void TakeDamage(int damage)
+    {
+        Instantiate(bloodEffect,transform.position, Quaternion.identity);
+        health -= damage;
+        m_animator.SetTrigger("Hurt");
+    }
+
+    private void OnDrawGizmosSelected()
+    {
+        Gizmos.color = Color.red;
+        Gizmos.DrawWireSphere(attackPos.position, attackRange);
     }
 }
